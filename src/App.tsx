@@ -38,17 +38,39 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function App() {
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 0, 1));
-  const [selectedDate, setSelectedDate] = useState(new Date(2026, 0, 1));
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [userName, setUserName] = useState<string>(() => {
+    return localStorage.getItem('todo_user_name') || '';
+  });
+  const [tempName, setTempName] = useState('');
+  
+  const storageKey = useMemo(() => `todos_2026_${userName}`, [userName]);
+
   const [todos, setTodos] = useState<Todo[]>(() => {
-    const saved = localStorage.getItem('todos_2026');
+    const saved = localStorage.getItem(`todos_2026_${localStorage.getItem('todo_user_name') || ''}`);
     return saved ? JSON.parse(saved) : [];
   });
   const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('todos_2026', JSON.stringify(todos));
-  }, [todos]);
+    if (userName) {
+      localStorage.setItem(storageKey, JSON.stringify(todos));
+      localStorage.setItem('todo_user_name', userName);
+    }
+  }, [todos, storageKey, userName]);
+
+  // Load todos when user changes
+  useEffect(() => {
+    if (userName) {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setTodos(JSON.parse(saved));
+      } else {
+        setTodos([]);
+      }
+    }
+  }, [storageKey, userName]);
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
 
@@ -169,14 +191,64 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-zinc-900 font-sans selection:bg-emerald-100">
+      <AnimatePresence>
+        {!userName && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-zinc-900/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white p-8 rounded-[2rem] shadow-2xl max-w-md w-full text-center"
+            >
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Trophy className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">欢迎来到 2026 积分赛</h2>
+              <p className="text-zinc-500 mb-8">请输入您的名字以保存您的专属积分记录</p>
+              <form onSubmit={(e) => { e.preventDefault(); if (tempName.trim()) setUserName(tempName.trim()); }} className="space-y-4">
+                <input
+                  autoFocus
+                  type="text"
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  placeholder="您的名字"
+                  className="w-full px-6 py-4 rounded-2xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-lg"
+                />
+                <button
+                  type="submit"
+                  disabled={!tempName.trim()}
+                  className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-200"
+                >
+                  开始记录
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         
         {/* Header */}
         <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h1 className="text-5xl font-light tracking-tight text-zinc-900 mb-2">
-              2026 <span className="font-serif italic text-emerald-600">积分赢奶茶</span> 活动
-            </h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-5xl font-light tracking-tight text-zinc-900">
+                2026 <span className="font-serif italic text-emerald-600">积分赢奶茶</span> 活动
+              </h1>
+              {userName && (
+                <button 
+                  onClick={() => { if(confirm('确定要切换用户吗？')) { setUserName(''); setTempName(''); } }}
+                  className="px-3 py-1 bg-zinc-100 hover:bg-zinc-200 rounded-full text-xs font-medium text-zinc-500 transition-colors"
+                >
+                  用户: {userName} (切换)
+                </button>
+              )}
+            </div>
             <p className="text-zinc-500 max-w-md">
               赢取一杯奶茶，开启元气满满的一天！管理你的每日待办事项（记得做好信息脱敏哦 😉）。
             </p>
