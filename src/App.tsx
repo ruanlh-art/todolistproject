@@ -52,6 +52,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
   const [loading, setLoading] = useState<string | null>(null);
+  const [showDateToast, setShowDateToast] = useState(false);
 
   useEffect(() => {
     if (userName) {
@@ -71,6 +72,14 @@ export default function App() {
       }
     }
   }, [storageKey, userName]);
+
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date);
+    setShowDateToast(true);
+    // Auto-hide toast
+    const timer = setTimeout(() => setShowDateToast(false), 2000);
+    return () => clearTimeout(timer);
+  };
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
 
@@ -143,41 +152,82 @@ export default function App() {
     const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
     return (
-      <div className="grid grid-cols-7 gap-1">
-        {['日', '一', '二', '三', '四', '五', '六'].map(day => (
-          <div key={day} className="text-center text-xs font-semibold text-zinc-400 py-2">
-            {day}
-          </div>
-        ))}
-        {calendarDays.map((day, idx) => {
-          const dayStr = format(day, 'yyyy-MM-dd');
-          const score = dailyScores[dayStr] || 0;
-          const isSelected = isSameDay(day, selectedDate);
-          const isCurrentMonth = isSameMonth(day, monthStart);
+      <>
+        {/* Desktop Grid View */}
+        <div className="hidden lg:grid grid-cols-7 gap-1">
+          {['日', '一', '二', '三', '四', '五', '六'].map(day => (
+            <div key={day} className="text-center text-xs font-semibold text-zinc-400 py-2">
+              {day}
+            </div>
+          ))}
+          {calendarDays.map((day, idx) => {
+            const dayStr = format(day, 'yyyy-MM-dd');
+            const score = dailyScores[dayStr] || 0;
+            const isSelected = isSameDay(day, selectedDate);
+            const isCurrentMonth = isSameMonth(day, monthStart);
 
-          return (
-            <button
-              key={dayStr}
-              onClick={() => setSelectedDate(day)}
-              className={cn(
-                "relative h-14 sm:h-20 border border-zinc-100 rounded-lg flex flex-col items-center justify-center transition-all hover:bg-zinc-50",
-                !isCurrentMonth && "opacity-20",
-                isSelected && "bg-zinc-900 text-white hover:bg-zinc-800 border-zinc-900 shadow-lg z-10"
-              )}
-            >
-              <span className="text-sm font-medium">{format(day, 'd')}</span>
-              {score > 0 && (
-                <div className={cn(
-                  "mt-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold",
-                  isSelected ? "bg-white text-zinc-900" : "bg-emerald-100 text-emerald-700"
-                )}>
-                  +{score}
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
+            return (
+              <button
+                key={dayStr}
+                onClick={() => handleDateChange(day)}
+                className={cn(
+                  "relative h-14 sm:h-20 border border-zinc-100 rounded-lg flex flex-col items-center justify-center transition-all hover:bg-zinc-50",
+                  !isCurrentMonth && "opacity-20",
+                  isSelected && "bg-zinc-900 text-white hover:bg-zinc-800 border-zinc-900 shadow-lg z-10"
+                )}
+              >
+                <span className="text-sm font-medium">{format(day, 'd')}</span>
+                {score > 0 && (
+                  <div className={cn(
+                    "mt-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                    isSelected ? "bg-white text-zinc-900" : "bg-emerald-100 text-emerald-700"
+                  )}>
+                    +{score}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Mobile Date Strip View */}
+        <div className="lg:hidden">
+          <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4">
+            {eachDayOfInterval({
+              start: addDays(selectedDate, -3),
+              end: addDays(selectedDate, 10)
+            }).map((day) => {
+              const dayStr = format(day, 'yyyy-MM-dd');
+              const isSelected = isSameDay(day, selectedDate);
+              const score = dailyScores[dayStr] || 0;
+              
+              return (
+                <button
+                  key={dayStr}
+                  onClick={() => handleDateChange(day)}
+                  className={cn(
+                    "flex-shrink-0 w-14 h-20 rounded-2xl flex flex-col items-center justify-center transition-all border",
+                    isSelected 
+                      ? "bg-zinc-900 border-zinc-900 text-white shadow-lg scale-105" 
+                      : "bg-white border-zinc-100 text-zinc-500"
+                  )}
+                >
+                  <span className="text-[10px] uppercase font-bold opacity-50 mb-1">
+                    {format(day, 'EEE', { locale: zhCN })}
+                  </span>
+                  <span className="text-lg font-bold">{format(day, 'd')}</span>
+                  {score > 0 && (
+                    <div className={cn(
+                      "mt-1 w-1.5 h-1.5 rounded-full",
+                      isSelected ? "bg-emerald-400" : "bg-emerald-500"
+                    )} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </>
     );
   };
 
@@ -234,38 +284,38 @@ export default function App() {
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         
         {/* Header */}
-        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <header className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-5xl font-light tracking-tight text-zinc-900">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-light tracking-tight text-zinc-900">
                 2026 <span className="font-serif italic text-emerald-600">积分赢奶茶</span> 活动
               </h1>
               {userName && (
                 <button 
                   onClick={() => { if(confirm('确定要切换用户吗？')) { setUserName(''); setTempName(''); } }}
-                  className="px-3 py-1 bg-zinc-100 hover:bg-zinc-200 rounded-full text-xs font-medium text-zinc-500 transition-colors"
+                  className="w-fit px-3 py-1 bg-zinc-100 hover:bg-zinc-200 rounded-full text-[10px] sm:text-xs font-medium text-zinc-500 transition-colors"
                 >
                   用户: {userName} (切换)
                 </button>
               )}
             </div>
-            <p className="text-zinc-500 max-w-md">
+            <p className="text-zinc-500 text-sm sm:text-base max-w-md">
               赢取一杯奶茶，开启元气满满的一天！管理你的每日待办事项（记得做好信息脱敏哦 😉）。
             </p>
           </div>
           
-          <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-zinc-100">
+          <div className="flex items-center justify-between sm:justify-start gap-4 bg-white p-2 rounded-2xl shadow-sm border border-zinc-100">
             <button 
               onClick={() => setCurrentDate(subMonths(currentDate, 1))}
               className="p-2 hover:bg-zinc-50 rounded-xl transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <div className="px-4 py-1 text-center min-w-[140px]">
-              <div className="text-xs uppercase tracking-widest text-zinc-400 font-bold">
+            <div className="px-2 sm:px-4 py-1 text-center min-w-[100px] sm:min-w-[140px]">
+              <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">
                 {format(currentDate, 'yyyy')}
               </div>
-              <div className="text-xl font-semibold">
+              <div className="text-lg sm:text-xl font-semibold">
                 {format(currentDate, 'MMMM', { locale: zhCN })}
               </div>
             </div>
@@ -278,56 +328,40 @@ export default function App() {
           </div>
         </header>
 
-        <main className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <main className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
           
-          {/* Left Panel: Calendar */}
-          <section className="lg:col-span-7 bg-white rounded-3xl p-6 shadow-sm border border-zinc-100">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-emerald-500" />
-                日历视图
-              </h2>
-              <div className="flex gap-2">
-                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setCurrentDate(setMonth(setYear(new Date(), 2026), m))}
-                    className={cn(
-                      "w-8 h-8 rounded-lg text-xs font-medium transition-all",
-                      currentDate.getMonth() === m 
-                        ? "bg-zinc-900 text-white" 
-                        : "bg-zinc-50 text-zinc-500 hover:bg-zinc-100"
-                    )}
-                  >
-                    {m + 1}
-                  </button>
-                ))}
+          {/* Mobile Only: Compact Date Switcher at Top */}
+          <div className="lg:hidden order-0">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">选择日期</h2>
+              <div className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
+                {format(selectedDate, 'yyyy年MM月dd日', { locale: zhCN })}
               </div>
             </div>
             {renderCalendar()}
-          </section>
+          </div>
 
           {/* Right Panel: Todos & Stats */}
-          <section className="lg:col-span-5 flex flex-col gap-6">
+          <section className="order-1 lg:order-2 lg:col-span-5 flex flex-col gap-6">
             
             {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-zinc-100">
-                <div className="text-xs uppercase tracking-widest text-zinc-400 font-bold mb-1">今日积分</div>
-                <div className="text-4xl font-light text-emerald-600">{todayScore}</div>
+              <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-zinc-100">
+                <div className="text-[10px] sm:text-xs uppercase tracking-widest text-zinc-400 font-bold mb-1">今日积分</div>
+                <div className="text-3xl sm:text-4xl font-light text-emerald-600">{todayScore}</div>
               </div>
-              <div className="bg-zinc-900 p-6 rounded-3xl shadow-lg text-white">
-                <div className="text-xs uppercase tracking-widest text-zinc-400 font-bold mb-1">总积分</div>
-                <div className="text-4xl font-light">{totalScore} <span className="text-lg opacity-50">/ 88</span></div>
+              <div className="bg-zinc-900 p-4 sm:p-6 rounded-3xl shadow-lg text-white">
+                <div className="text-[10px] sm:text-xs uppercase tracking-widest text-zinc-400 font-bold mb-1">总积分</div>
+                <div className="text-3xl sm:text-4xl font-light">{totalScore} <span className="text-base sm:text-lg opacity-50">/ 88</span></div>
               </div>
             </div>
 
             {/* Todo List */}
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-zinc-100 flex-1 min-h-[400px] flex flex-col">
-              <div className="flex items-center justify-between mb-8">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-zinc-100 flex-1 min-h-[350px] sm:min-h-[400px] flex flex-col">
+              <div className="flex items-center justify-between mb-6 sm:mb-8">
                 <div>
-                  <h2 className="text-2xl font-semibold">今日待办</h2>
-                  <p className="text-zinc-400 text-sm">{format(selectedDate, 'yyyy年MM月dd日', { locale: zhCN })}</p>
+                  <h2 className="text-xl sm:text-2xl font-semibold">今日待办</h2>
+                  <p className="text-zinc-400 text-xs sm:text-sm">{format(selectedDate, 'yyyy年MM月dd日', { locale: zhCN })}</p>
                 </div>
                 <button 
                   onClick={handleAddTodo}
@@ -337,7 +371,7 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+              <div className="space-y-3 sm:space-y-4 flex-1 overflow-y-auto max-h-[400px] pr-1 sm:pr-2 custom-scrollbar">
                 <AnimatePresence mode="popLayout">
                   {currentMonthTodos.length === 0 ? (
                     <motion.div 
@@ -345,8 +379,8 @@ export default function App() {
                       animate={{ opacity: 1 }}
                       className="h-full flex flex-col items-center justify-center text-zinc-300 py-12"
                     >
-                      <CheckCircle2 className="w-12 h-12 mb-2 opacity-20" />
-                      <p>今天还没有待办事项</p>
+                      <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12 mb-2 opacity-20" />
+                      <p className="text-sm sm:text-base">今天还没有待办事项</p>
                     </motion.div>
                   ) : (
                     currentMonthTodos.map((todo) => (
@@ -357,13 +391,13 @@ export default function App() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         className={cn(
-                          "group flex flex-col gap-2 p-4 rounded-2xl border transition-all",
+                          "group flex flex-col gap-2 p-3 sm:p-4 rounded-2xl border transition-all",
                           todo.completed 
                             ? "bg-zinc-50 border-transparent" 
                             : "bg-white border-zinc-100 hover:border-zinc-200 shadow-sm"
                         )}
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4">
                           <button
                             disabled={loading === todo.id}
                             onClick={() => handleToggleTodo(todo.id)}
@@ -374,11 +408,11 @@ export default function App() {
                           >
                             {todo.completed ? (
                               <CheckCircle className={cn(
-                                "w-6 h-6",
+                                "w-5 h-5 sm:w-6 sm:h-6",
                                 todo.isMeaningful ? "text-emerald-500" : "text-red-400"
                               )} />
                             ) : (
-                              <Circle className="w-6 h-6 text-zinc-200 group-hover:text-zinc-400" />
+                              <Circle className="w-5 h-5 sm:w-6 sm:h-6 text-zinc-200 group-hover:text-zinc-400" />
                             )}
                           </button>
                           
@@ -389,7 +423,7 @@ export default function App() {
                             placeholder="填写待办事项..."
                             disabled={todo.completed}
                             className={cn(
-                              "flex-1 bg-transparent border-none focus:ring-0 p-0 text-zinc-700 placeholder:text-zinc-300",
+                              "flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm sm:text-base text-zinc-700 placeholder:text-zinc-300",
                               todo.completed && "line-through text-zinc-400"
                             )}
                           />
@@ -397,14 +431,14 @@ export default function App() {
                           {!todo.completed && (
                             <button 
                               onClick={() => handleRemoveTodo(todo.id)}
-                              className="opacity-0 group-hover:opacity-100 text-zinc-300 hover:text-red-400 transition-all"
+                              className="opacity-100 sm:opacity-0 group-hover:opacity-100 text-zinc-300 hover:text-red-400 transition-all"
                             >
                               <Plus className="w-4 h-4 rotate-45" />
                             </button>
                           )}
                         </div>
                         {todo.completed && !todo.isMeaningful && (
-                          <p className="text-[10px] text-red-400 ml-10 font-medium">
+                          <p className="text-[10px] text-red-400 ml-8 sm:ml-10 font-medium">
                             AI 判定此任务无实际意义，未计入积分。
                           </p>
                         )}
@@ -451,7 +485,49 @@ export default function App() {
               </div>
             </div>
           </section>
+
+          {/* Left Panel: Calendar (Desktop Only) */}
+          <section className="hidden lg:block order-2 lg:order-1 lg:col-span-7 bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-zinc-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <CalendarIcon className="w-5 h-5 text-emerald-500" />
+                日历视图
+              </h2>
+              <div className="flex gap-1 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setCurrentDate(setMonth(setYear(new Date(), 2026), m))}
+                    className={cn(
+                      "flex-shrink-0 w-8 h-8 rounded-lg text-[10px] font-medium transition-all",
+                      currentDate.getMonth() === m 
+                        ? "bg-zinc-900 text-white" 
+                        : "bg-zinc-50 text-zinc-500 hover:bg-zinc-100"
+                    )}
+                  >
+                    {m + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {renderCalendar()}
+          </section>
         </main>
+
+        {/* Date Change Toast */}
+        <AnimatePresence>
+          {showDateToast && (
+            <motion.div 
+              initial={{ y: 50, opacity: 0, x: '-50%' }}
+              animate={{ y: 0, opacity: 1, x: '-50%' }}
+              exit={{ y: 50, opacity: 0, x: '-50%' }}
+              className="fixed bottom-8 left-1/2 z-[110] bg-zinc-900 text-white px-6 py-3 rounded-full shadow-2xl text-sm font-medium flex items-center gap-3 border border-white/10"
+            >
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              已切换至 {format(selectedDate, 'MM月dd日')}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       
       <style>{`
