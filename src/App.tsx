@@ -73,8 +73,12 @@ export default function App() {
   const todayScore = dailyScores[selectedDateStr] || 0;
 
   const handleAddTodo = () => {
+    const id = typeof crypto.randomUUID === 'function' 
+      ? crypto.randomUUID() 
+      : Math.random().toString(36).substring(2, 15);
+      
     const newTodo: Todo = {
-      id: crypto.randomUUID(),
+      id,
       text: '',
       completed: false,
       isMeaningful: false,

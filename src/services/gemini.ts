@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
-
 export async function validateTodoMeaning(text: string): Promise<boolean> {
   if (!text.trim()) return false;
   
@@ -11,6 +9,13 @@ export async function validateTodoMeaning(text: string): Promise<boolean> {
   if (/^[a-zA-Z]+$/.test(text) && text.length < 3) return false;
 
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("GEMINI_API_KEY is not defined, skipping AI validation");
+      return text.length >= 2;
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview", // Using a fast model for validation
       contents: `判断以下待办事项是否具有实际意义（不是乱写的数字、随机字符或无意义的单词）。
